@@ -1,10 +1,10 @@
 use crate::{cache::DagCache, db::DBStorage, errors::StoreError};
 
-use super::prelude::{Cache, DbWriter};
-use crate::schema::Schema;
+use super::prelude::DbWriter;
+use crate::schema::{KeyCodec, Schema, ValueCodec};
 use itertools::Itertools;
 use rocksdb::{Direction, IteratorMode, ReadOptions};
-use starcoin_storage::storage::{KeyCodec, RawDBStorage, ValueCodec};
+use starcoin_storage::storage::RawDBStorage;
 use std::{
     collections::hash_map::RandomState, error::Error, hash::BuildHasher, marker::PhantomData,
     sync::Arc,
@@ -16,7 +16,7 @@ pub struct CachedDbAccess<S: Schema, R = RandomState> {
     db: Arc<DBStorage>,
 
     // Cache
-    cache: Cache,
+    cache: DagCache<S::Key, S::Value>,
 
     _phantom: PhantomData<R>,
 }
@@ -25,23 +25,23 @@ impl<S: Schema, R> CachedDbAccess<S, R>
 where
     R: BuildHasher + Default,
 {
-    pub fn new(db: Arc<DBStorage>, cache_size: u64, prefix: &'static str) -> Self {
+    pub fn new(db: Arc<DBStorage>, cache_size: u64) -> Self {
         Self {
             db,
-            cache: Cache::new_with_capacity(cache_size),
+            cache: DagCache::new_with_capacity(cache_size),
             _phantom: Default::default(),
         }
     }
 
-    pub fn read_from_cache(&self, key: S::Key) -> Result<Option<S::Value>, StoreError> {
-        self.cache.get(&key).transpose()
+    pub fn read_from_cache(&self, key: S::Key) -> Option<S::Value> {
+        self.cache.get(&key)
     }
 
     pub fn has(&self, key: S::Key) -> Result<bool, StoreError> {
         Ok(self.cache.contains_key(&key)
             || self
                 .db
-                .raw_get_pinned_cf(S::COLUMN_FAMILY, key.encode_key())
+                .raw_get_pinned_cf(S::COLUMN_FAMILY, key.encode_key().unwrap())
                 .map_err(|_| StoreError::CFNotExist(S::COLUMN_FAMILY.to_string()))?
                 .is_some())
     }
@@ -51,7 +51,7 @@ where
             Ok(data)
         } else if let Some(slice) = self
             .db
-            .raw_get_pinned_cf(S::COLUMN_FAMILY, &key.encode_key())
+            .raw_get_pinned_cf(S::COLUMN_FAMILY, key.encode_key().unwrap())
             .map_err(|_| StoreError::CFNotExist(S::COLUMN_FAMILY.to_string()))?
         {
             let data = S::Value::decode_value(slice.as_ref())
@@ -59,7 +59,7 @@ where
             self.cache.insert(key, data.clone());
             Ok(data)
         } else {
-            Err(StoreError::KeyNotFound(key.to_string()))
+            Err(StoreError::KeyNotFound("".to_string()))
         }
     }
 
@@ -91,8 +91,8 @@ where
         key: S::Key,
         data: S::Value,
     ) -> Result<(), StoreError> {
-        self.cache.insert(key.clone(), data.clone());
-        writer.put(&key, data)?;
+        writer.put::<S>(&key, &data)?;
+        self.cache.insert(key, data);
         Ok(())
     }
 
@@ -102,8 +102,8 @@ where
         iter: &mut (impl Iterator<Item = (S::Key, S::Value)> + Clone),
     ) -> Result<(), StoreError> {
         for (key, data) in iter {
-            self.cache.insert(key.clone(), data.clone());
-            writer.put(&key, data)?;
+            writer.put::<S>(&key, &data)?;
+            self.cache.insert(key, data);
         }
         Ok(())
     }
@@ -115,7 +115,7 @@ where
         iter: &mut impl Iterator<Item = (S::Key, S::Value)>,
     ) -> Result<(), StoreError> {
         for (key, data) in iter {
-            writer.put(&key, data)?;
+            writer.put::<S>(&key, &data)?;
         }
         // The cache must be cleared in order to avoid invalidated entries
         self.cache.remove_all();
@@ -124,8 +124,7 @@ where
 
     pub fn delete(&self, mut writer: impl DbWriter, key: S::Key) -> Result<(), StoreError> {
         self.cache.remove(&key);
-        let bin_key = key.encode_key()?;
-        writer.delete(&key)?;
+        writer.delete::<S>(&key)?;
         Ok(())
     }
 
@@ -137,7 +136,7 @@ where
         let key_iter_clone = key_iter.clone();
         self.cache.remove_many(key_iter);
         for key in key_iter_clone {
-            writer.delete(&key)?;
+            writer.delete::<S>(&key)?;
         }
         Ok(())
     }
@@ -146,7 +145,11 @@ where
         self.cache.remove_all();
         let keys = self
             .db
-            .raw_iterator_cf_opt(self.prefix, IteratorMode::Start, ReadOptions::default())
+            .raw_iterator_cf_opt(
+                S::COLUMN_FAMILY,
+                IteratorMode::Start,
+                ReadOptions::default(),
+            )
             .map_err(|e| StoreError::CFNotExist(e.to_string()))?
             .map(|iter_result| match iter_result {
                 Ok((key, _)) => Ok::<_, rocksdb::Error>(key),
@@ -154,7 +157,7 @@ where
             })
             .collect_vec();
         for key in keys {
-            writer.delete(&key?)?;
+            writer.delete::<S>(&S::Key::decode_key(&key?)?)?;
         }
         Ok(())
     }
@@ -171,13 +174,13 @@ where
         let read_opts = ReadOptions::default();
         let mut db_iterator = match seek_from {
             Some(seek_key) => self.db.raw_iterator_cf_opt(
-                self.prefix,
-                IteratorMode::From(seek_key.as_ref(), Direction::Forward),
+                S::COLUMN_FAMILY,
+                IteratorMode::From(seek_key.encode_key()?.as_slice(), Direction::Forward),
                 read_opts,
             ),
             None => self
                 .db
-                .raw_iterator_cf_opt(self.prefix, IteratorMode::Start, read_opts),
+                .raw_iterator_cf_opt(S::COLUMN_FAMILY, IteratorMode::Start, read_opts),
         }
         .map_err(|e| StoreError::CFNotExist(e.to_string()))?;
 

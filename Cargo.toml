@@ -24,7 +24,8 @@ default-members = [
 [workspace.dependencies]
 starcoin-network = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}
 starcoin-logger = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}
-starcoin-config = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}
+#starcoin-config = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}
+starcoin-config = { path = "../starcoin/config" }
 starcoin-crypto = {git = "https://github.com/starcoinorg/starcoin-crypto", rev="e19c5631c8f3c39730850080c196e0206834545f"}
 starcoin-types = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}
 #starcoin-storage = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}

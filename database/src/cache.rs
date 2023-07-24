@@ -10,7 +10,7 @@ pub struct DagCache<K: Hash + Eq + Default, V: Default> {
 impl<K, V> DagCache<K, V>
 where
     K: Hash + Eq + Default,
-    V: Default,
+    V: Default + Clone,
 {
     pub(crate) fn new_with_capacity(size: u64) -> Self {
         Self {

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use starcoin_crypto::HashValue as Hash;
 use std::sync::Arc;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ReachabilityData {
     pub children: BlockHashes,
     pub parent: Hash,

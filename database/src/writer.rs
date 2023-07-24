@@ -6,7 +6,7 @@ use crate::{db::DBStorage, errors::StoreError};
 
 /// Abstraction over direct/batched DB writing
 pub trait DbWriter {
-    fn put<S: Schema>(&mut self, key: &S::Key, value: S::Value) -> Result<(), StoreError>;
+    fn put<S: Schema>(&mut self, key: &S::Key, value: &S::Value) -> Result<(), StoreError>;
     fn delete<S: Schema>(&mut self, key: &S::Key) -> Result<(), StoreError>;
 }
 
@@ -21,7 +21,7 @@ impl<'a> DirectDbWriter<'a> {
 }
 
 impl DbWriter for DirectDbWriter<'_> {
-    fn put<S: Schema>(&mut self, key: &S::Key, value: S::Value) -> Result<(), StoreError> {
+    fn put<S: Schema>(&mut self, key: &S::Key, value: &S::Value) -> Result<(), StoreError> {
         let bin_key = key.encode_key()?;
         let bin_data = value.encode_value()?;
         self.db
@@ -48,7 +48,7 @@ impl<'a> BatchDbWriter<'a> {
 }
 
 impl DbWriter for BatchDbWriter<'_> {
-    fn put<S: Schema>(&mut self, key: &S::Key, value: S::Value) -> Result<(), StoreError> {
+    fn put<S: Schema>(&mut self, key: &S::Key, value: &S::Value) -> Result<(), StoreError> {
         let key = key.encode_key()?;
         let value = value.encode_value()?;
         self.batch.put(key, value);
@@ -64,12 +64,12 @@ impl DbWriter for BatchDbWriter<'_> {
 
 impl<T: DbWriter> DbWriter for &mut T {
     #[inline]
-    fn put<S: Schema>(&mut self, key: &S::Key, value: S::Value) -> Result<(), StoreError> {
-        (*self).put(key, value)
+    fn put<S: Schema>(&mut self, key: &S::Key, value: &S::Value) -> Result<(), StoreError> {
+        (*self).put::<S>(key, value)
     }
 
     #[inline]
     fn delete<S: Schema>(&mut self, key: &S::Key) -> Result<(), StoreError> {
-        (*self).delete(key)
+        (*self).delete::<S>(key)
     }
 }

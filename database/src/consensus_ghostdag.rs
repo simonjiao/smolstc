@@ -1,5 +1,7 @@
+use crate::schema::{KeyCodec, ValueCodec};
 use crate::{
     db::DBStorage,
+    define_schema,
     errors::StoreError,
     prelude::{CachedDbAccess, DirectDbWriter},
     writer::BatchDbWriter,
@@ -147,13 +149,59 @@ impl GhostDagDataWrapper {
 pub(crate) const GHOST_DAG_STORE_CF: &str = "block-ghostdag-data";
 pub(crate) const COMPACT_GHOST_DAG_STORE_CF: &str = "compact-block-ghostdag-data";
 
+define_schema!(GhostDag, Hash, Arc<GhostdagData>, GHOST_DAG_STORE_CF);
+define_schema!(
+    CompactGhostDag,
+    Hash,
+    CompactGhostdagData,
+    COMPACT_GHOST_DAG_STORE_CF
+);
+
+impl KeyCodec<GhostDag> for Hash {
+    fn encode_key(&self) -> Result<Vec<u8>, StoreError> {
+        todo!()
+    }
+
+    fn decode_key(data: &[u8]) -> Result<Self, StoreError> {
+        todo!()
+    }
+}
+impl ValueCodec<GhostDag> for Arc<GhostdagData> {
+    fn encode_value(&self) -> Result<Vec<u8>, StoreError> {
+        todo!()
+    }
+
+    fn decode_value(data: &[u8]) -> Result<Self, StoreError> {
+        todo!()
+    }
+}
+
+impl KeyCodec<CompactGhostDag> for Hash {
+    fn encode_key(&self) -> Result<Vec<u8>, StoreError> {
+        todo!()
+    }
+
+    fn decode_key(data: &[u8]) -> Result<Self, StoreError> {
+        todo!()
+    }
+}
+impl ValueCodec<CompactGhostDag> for CompactGhostdagData {
+    fn encode_value(&self) -> Result<Vec<u8>, StoreError> {
+        todo!()
+    }
+
+    fn decode_value(data: &[u8]) -> Result<Self, StoreError> {
+        todo!()
+    }
+}
+
 /// A DB + cache implementation of `GhostdagStore` trait, with concurrency support.
 #[derive(Clone)]
 pub struct DbGhostdagStore {
     db: Arc<DBStorage>,
     level: BlockLevel,
-    access: CachedDbAccess<Hash, Arc<GhostdagData>>,
-    compact_access: CachedDbAccess<Hash, CompactGhostdagData>,
+    access: CachedDbAccess<GhostDag>,
+    compact_access: CachedDbAccess<CompactGhostDag>,
 }
 
 impl DbGhostdagStore {
@@ -161,8 +209,8 @@ impl DbGhostdagStore {
         Self {
             db: Arc::clone(&db),
             level,
-            access: CachedDbAccess::new(db.clone(), cache_size, GHOST_DAG_STORE_CF),
-            compact_access: CachedDbAccess::new(db, cache_size, COMPACT_GHOST_DAG_STORE_CF),
+            access: CachedDbAccess::new(db.clone(), cache_size),
+            compact_access: CachedDbAccess::new(db, cache_size),
         }
     }
 

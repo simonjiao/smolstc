@@ -1,5 +1,7 @@
+use crate::schema::{KeyCodec, ValueCodec};
 use crate::{
     db::DBStorage,
+    define_schema,
     errors::{StoreError, StoreResult},
     prelude::CachedDbAccess,
     writer::{BatchDbWriter, DirectDbWriter},
@@ -36,24 +38,65 @@ pub trait HeaderStore: HeaderStoreReader {
 pub(crate) const HEADERS_STORE_CF: &str = "headers-store";
 pub(crate) const COMPACT_HEADER_DATA_STORE_CF: &str = "compact-header-data";
 
+define_schema!(BlockHeader, Hash, HeaderWithBlockLevel, HEADERS_STORE_CF);
+define_schema!(
+    CompactBlockHeader,
+    Hash,
+    CompactHeaderData,
+    COMPACT_HEADER_DATA_STORE_CF
+);
+
+impl KeyCodec<BlockHeader> for Hash {
+    fn encode_key(&self) -> Result<Vec<u8>, StoreError> {
+        todo!()
+    }
+
+    fn decode_key(data: &[u8]) -> Result<Self, StoreError> {
+        todo!()
+    }
+}
+impl ValueCodec<BlockHeader> for HeaderWithBlockLevel {
+    fn encode_value(&self) -> Result<Vec<u8>, StoreError> {
+        todo!()
+    }
+
+    fn decode_value(data: &[u8]) -> Result<Self, StoreError> {
+        todo!()
+    }
+}
+impl KeyCodec<CompactBlockHeader> for Hash {
+    fn encode_key(&self) -> Result<Vec<u8>, StoreError> {
+        todo!()
+    }
+
+    fn decode_key(data: &[u8]) -> Result<Self, StoreError> {
+        todo!()
+    }
+}
+impl ValueCodec<CompactBlockHeader> for CompactHeaderData {
+    fn encode_value(&self) -> Result<Vec<u8>, StoreError> {
+        todo!()
+    }
+
+    fn decode_value(data: &[u8]) -> Result<Self, StoreError> {
+        todo!()
+    }
+}
+
 /// A DB + cache implementation of `HeaderStore` trait, with concurrency support.
 #[derive(Clone)]
 pub struct DbHeadersStore {
     db: Arc<DBStorage>,
-    compact_headers_access: CachedDbAccess<Hash, CompactHeaderData>,
-    headers_access: CachedDbAccess<Hash, HeaderWithBlockLevel>,
+    headers_access: CachedDbAccess<BlockHeader>,
+    compact_headers_access: CachedDbAccess<CompactBlockHeader>,
 }
 
 impl DbHeadersStore {
     pub fn new(db: Arc<DBStorage>, cache_size: u64) -> Self {
         Self {
             db: Arc::clone(&db),
-            compact_headers_access: CachedDbAccess::new(
-                Arc::clone(&db),
-                cache_size,
-                COMPACT_HEADER_DATA_STORE_CF,
-            ),
-            headers_access: CachedDbAccess::new(db, cache_size, HEADERS_STORE_CF),
+            headers_access: CachedDbAccess::new(db.clone(), cache_size),
+            compact_headers_access: CachedDbAccess::new(db, cache_size),
         }
     }
 
@@ -105,14 +148,14 @@ impl HeaderStoreReader for DbHeadersStore {
     }
 
     fn get_timestamp(&self, hash: Hash) -> Result<u64, StoreError> {
-        if let Some(header_with_block_level) = self.headers_access.read_from_cache(hash)? {
+        if let Some(header_with_block_level) = self.headers_access.read_from_cache(hash) {
             return Ok(header_with_block_level.header.timestamp());
         }
         Ok(self.compact_headers_access.read(hash)?.timestamp)
     }
 
     fn get_difficulty(&self, hash: Hash) -> Result<U256, StoreError> {
-        if let Some(header_with_block_level) = self.headers_access.read_from_cache(hash)? {
+        if let Some(header_with_block_level) = self.headers_access.read_from_cache(hash) {
             return Ok(header_with_block_level.header.difficulty());
         }
         Ok(self.compact_headers_access.read(hash)?.difficulty)
@@ -127,7 +170,7 @@ impl HeaderStoreReader for DbHeadersStore {
     }
 
     fn get_compact_header_data(&self, hash: Hash) -> Result<CompactHeaderData, StoreError> {
-        if let Some(header_with_block_level) = self.headers_access.read_from_cache(hash)? {
+        if let Some(header_with_block_level) = self.headers_access.read_from_cache(hash) {
             return Ok(CompactHeaderData {
                 timestamp: header_with_block_level.header.timestamp(),
                 difficulty: header_with_block_level.header.difficulty(),
