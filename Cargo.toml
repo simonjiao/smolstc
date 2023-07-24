@@ -24,9 +24,9 @@ default-members = [
 
 [workspace.dependencies]
 starcoin-network = {git = "https://github.com/starcoinorg/starcoin",rev = "fb6fcc48fdcad3d6f54ed97e004e25099ac24000"}
-starcoin-storage = {git = "https://github.com/starcoinorg/starcoin",rev = "fb6fcc48fdcad3d6f54ed97e004e25099ac24000"}
+starcoin-storage = {git = "https://github.com/simonjiao/starcoin", branch = "generic-cache" }
 starcoin-logger = {git = "https://github.com/starcoinorg/starcoin",rev = "fb6fcc48fdcad3d6f54ed97e004e25099ac24000"}
-starcoin-config = {git = "https://github.com/starcoinorg/starcoin",rev = "fb6fcc48fdcad3d6f54ed97e004e25099ac24000"}
+starcoin-config = {git = "https://github.com/simonjiao/starcoin", branch = "generic-cache" }
 bcs-ext = { git = "https://github.com/starcoinorg/starcoin",rev = "fb6fcc48fdcad3d6f54ed97e004e25099ac24000"}
 sp-utils = { git = "https://github.com/starcoinorg/starcoin",rev = "fb6fcc48fdcad3d6f54ed97e004e25099ac24000"}
 network-p2p = { git = "https://github.com/starcoinorg/starcoin",rev = "fb6fcc48fdcad3d6f54ed97e004e25099ac24000"}

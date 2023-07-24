@@ -7,6 +7,7 @@ mod consensus_relations;
 mod db;
 mod errors;
 mod item;
+mod schema;
 mod writer;
 
 pub mod prelude {
@@ -14,7 +15,7 @@ pub mod prelude {
 
     pub use super::{
         access::CachedDbAccess,
-        cache::Cache,
+        cache::DagCache,
         item::CachedDbItem,
         writer::{BatchDbWriter, DbWriter, DirectDbWriter},
     };

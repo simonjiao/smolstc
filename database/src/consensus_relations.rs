@@ -1,5 +1,7 @@
+use crate::schema::{KeyCodec, ValueCodec};
 use crate::{
     db::DBStorage,
+    define_schema,
     prelude::{BatchDbWriter, CachedDbAccess, DirectDbWriter, StoreError},
 };
 use consensus_types::blockhash::{BlockHashMap, BlockHashes, BlockLevel};
@@ -25,13 +27,54 @@ pub trait RelationsStore: RelationsStoreReader {
 pub(crate) const PARENTS_CF: &str = "block-parents";
 pub(crate) const CHILDREN_CF: &str = "block-children";
 
+define_schema!(RelationParent, Hash, Arc<Vec<Hash>>, PARENTS_CF);
+define_schema!(RelationChildren, Hash, Arc<Vec<Hash>>, CHILDREN_CF);
+
+impl KeyCodec<RelationParent> for Hash {
+    fn encode_key(&self) -> Result<Vec<u8>, StoreError> {
+        Ok(self.to_vec())
+    }
+
+    fn decode_key(data: &[u8]) -> Result<Self, StoreError> {
+        Hash::from_slice(data).map_err(|e| StoreError::DecodeError(e.to_string()))
+    }
+}
+impl ValueCodec<RelationParent> for Arc<Vec<Hash>> {
+    fn encode_value(&self) -> Result<Vec<u8>, StoreError> {
+        bcs_ext::to_bytes(self).map_err(|e| StoreError::EncodeError(e.to_string()))
+    }
+
+    fn decode_value(data: &[u8]) -> Result<Self, StoreError> {
+        bcs_ext::from_bytes(data).map_err(|e| StoreError::DecodeError(e.to_string()))
+    }
+}
+impl KeyCodec<RelationChildren> for Hash {
+    fn encode_key(&self) -> Result<Vec<u8>, StoreError> {
+        Ok(self.to_vec())
+    }
+
+    fn decode_key(data: &[u8]) -> Result<Self, StoreError> {
+        Hash::from_slice(data).map_err(|e| StoreError::DecodeError(e.to_string()))
+    }
+}
+
+impl ValueCodec<RelationChildren> for Arc<Vec<Hash>> {
+    fn encode_value(&self) -> Result<Vec<u8>, StoreError> {
+        bcs_ext::to_bytes(self).map_err(|e| StoreError::EncodeError(e.to_string()))
+    }
+
+    fn decode_value(data: &[u8]) -> Result<Self, StoreError> {
+        bcs_ext::from_bytes(data).map_err(|e| StoreError::DecodeError(e.to_string()))
+    }
+}
+
 /// A DB + cache implementation of `RelationsStore` trait, with concurrent readers support.
 #[derive(Clone)]
 pub struct DbRelationsStore {
     db: Arc<DBStorage>,
     level: BlockLevel,
-    parents_access: CachedDbAccess<Hash, Arc<Vec<Hash>>>,
-    children_access: CachedDbAccess<Hash, Arc<Vec<Hash>>>,
+    parents_access: CachedDbAccess<RelationParent>,
+    children_access: CachedDbAccess<RelationChildren>,
 }
 
 impl DbRelationsStore {
@@ -39,8 +82,8 @@ impl DbRelationsStore {
         Self {
             db: Arc::clone(&db),
             level,
-            parents_access: CachedDbAccess::new(Arc::clone(&db), cache_size, PARENTS_CF),
-            children_access: CachedDbAccess::new(db, cache_size, CHILDREN_CF),
+            parents_access: CachedDbAccess::new(Arc::clone(&db), cache_size),
+            children_access: CachedDbAccess::new(db, cache_size),
         }
     }
 

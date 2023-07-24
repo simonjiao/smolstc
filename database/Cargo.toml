@@ -19,6 +19,8 @@ rand.workspace = true
 faster-hex.workspace = true
 itertools.workspace = true
 num_cpus.workspace = true
+anyhow.workspace = true
+bcs-ext.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
