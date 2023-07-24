@@ -27,7 +27,8 @@ starcoin-logger = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e88
 starcoin-config = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}
 starcoin-crypto = {git = "https://github.com/starcoinorg/starcoin-crypto", rev="e19c5631c8f3c39730850080c196e0206834545f"}
 starcoin-types = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}
-starcoin-storage = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}
+#starcoin-storage = {git = "https://github.com/starcoinorg/starcoin",rev = "e49e886e40bf5baf239e8feec6eb834c9da61ade"}
+starcoin-storage = { path = "../starcoin/storage" }
 rocksdb = "0.21.0"
 bincode = { version = "1", default-features = false }
 faster-hex = "0.6"

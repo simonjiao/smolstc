@@ -17,8 +17,8 @@ pub enum StoreError {
     #[error("rocksdb error {0}")]
     DbError(#[from] rocksdb::Error),
 
-    #[error("bincode error {0}")]
-    DeserializationError(#[from] Box<bincode::ErrorKind>),
+    #[error("decode error {0}")]
+    DecodeError(String),
 
     #[error("ghostdag {0} duplicate blocks")]
     DAGDupBlocksError(String),
